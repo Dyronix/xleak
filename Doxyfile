@@ -1,5 +1,5 @@
-# Doxygen settings for the xleak api. Run "doxygen Doxyfile" in this folder; the result is in
-# out/docs/html. Warnings stop the run, so every public name stays documented.
+# Doxygen settings for the xleak api. Create out/docs and run "doxygen Doxyfile" in this folder; the
+# result is in out/docs/html. Warnings stop the run, so every public name stays documented.
 PROJECT_NAME           = xleak
 PROJECT_NUMBER         = 0.1.0
 PROJECT_BRIEF          = "A memory leak detector: link it, include one header, read the report"
