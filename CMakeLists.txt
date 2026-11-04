@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
-# The version lives in VERSION so the release notes, the package config and Doxygen read one value.
+# The version lives in VERSION so the release notes, the package config and Doxygen (through the
+# XLEAK_VERSION environment variable) read one value.
 file(READ "${CMAKE_CURRENT_LIST_DIR}/VERSION" xleak_version)
 string(STRIP "${xleak_version}" xleak_version)
 
@@ -55,6 +56,17 @@ if(xleak_platform)
     target_compile_definitions(xleak
         PUBLIC XLEAK_ENABLED
         PRIVATE XLEAK_VERSION_TEXT="${PROJECT_VERSION}")
+
+    # A static library only adds the object files something refers to, and nothing refers to the
+    # one that starts xleak. Asking the linker for its anchor keeps it for every program that links
+    # this target, whether or not it includes the header. 32-bit MSVC decorates C names with "_".
+    if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+        target_link_options(xleak INTERFACE "/INCLUDE:_xleak_link_anchor")
+    elseif(MSVC)
+        target_link_options(xleak INTERFACE "/INCLUDE:xleak_link_anchor")
+    else()
+        target_link_options(xleak INTERFACE "LINKER:-u,xleak_link_anchor")
+    endif()
 
     # Private: xleak.h stays plain, so a program isn't forced up to the C++ version xleak uses.
     target_compile_features(xleak PRIVATE cxx_std_20)
