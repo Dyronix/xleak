@@ -1,0 +1,53 @@
+name: M0 Linux spike
+
+on:
+  push:
+    branches: [spike/**]
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: gcc-13-debug, cc: gcc-13, cxx: g++-13, config: Debug }
+          - { name: gcc-13-development, cc: gcc-13, cxx: g++-13, config: RelWithDebInfo }
+          - { name: clang-18-debug, cc: clang-18, cxx: clang++-18, config: Debug }
+          - { name: clang-18-development, cc: clang-18, cxx: clang++-18, config: RelWithDebInfo }
+    name: ${{ matrix.name }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install gdb
+        run: sudo apt-get update && sudo apt-get install -y gdb
+      - name: Configure and build
+        run: |
+          cmake -S spike -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+          cmake --build build --verbose
+      - name: Exe exports the hooks
+        run: nm -D --defined-only build/spike | grep -E ' (malloc|calloc|realloc|free|_Znwm|_ZdlPv)$'
+      - name: Run; the exit code must be 7
+        run: |
+          set +e
+          build/spike "argument with spaces" > out.txt 2>&1 < /dev/null
+          code=$?
+          set -e
+          cat out.txt
+          echo "exit code: $code"
+          test "$code" -eq 7
+      - name: The planted line is in the report
+        run: grep -n 'main.cpp:' out.txt
+      - name: Ordering
+        run: |
+          grep -n -E '^\[' out.txt
+          test "$(grep -n 'constructor 101' out.txt | cut -d: -f1)" -lt "$(grep -n 'global\] constructed' out.txt | cut -d: -f1)"
+          test "$(grep -n 'global\] destroyed' out.txt | cut -d: -f1)" -lt "$(grep -n '^\[report\]' out.txt | cut -d: -f1)"
+          test "$(grep -n 'thread_local\] destroyed' out.txt | cut -d: -f1)" -lt "$(grep -n '^\[report\]' out.txt | cut -d: -f1)"
+      - name: gdb stops in main and in a global's constructor
+        run: |
+          gdb -batch -ex 'set pagination off' -ex 'break main' -ex "break user_global::user_global" -ex 'run' -ex 'bt 3' -ex 'continue' -ex 'bt 2' -ex 'kill' build/spike 2>&1 | tee gdb.txt
+          grep -q 'user_global' gdb.txt
+          grep -q 'in main\|main (' gdb.txt
