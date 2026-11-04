@@ -114,7 +114,8 @@ int main(int argc, char** argv)
 		spike::say_count("  shared size", static_cast<long>(shared->size()));
 	}, true, true, true);
 	check("strdup inside libc", [] {
-		char* const copied = strdup("a string long enough to need the heap");
+		// volatile: Clang removes an unused strdup and free pair when optimizing
+		char* volatile copied = strdup("a string long enough to need the heap");
 		std::free(copied);
 	});
 	check("fopen inside libc", [] {
