@@ -41,8 +41,9 @@ namespace xleak_test
         std::span<const test_case> tests;
     };
 
-    // Runs every test of the groups whose name matches filter (all groups for an empty filter).
-    // Returns the process exit code: 0 when every test passed.
+    // Runs every test of the group whose name matches filter. Groups need different environments,
+    // so an empty filter runs nothing and fails. Returns the process exit code: 0 when every test
+    // passed.
     int32_t run_groups(std::span<const test_group> groups, std::string_view filter);
 
     std::span<const test_case> get_start_tests();

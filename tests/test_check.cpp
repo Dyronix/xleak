@@ -31,11 +31,18 @@ namespace xleak_test
     //-------------------------------------------------------------------------
     int32_t run_groups(std::span<const test_group> groups, std::string_view filter)
     {
+        // Groups need different environments (XLEAK unset, XLEAK=off), so they run one at a time
+        if (filter.empty())
+        {
+            std::printf("pass the name of the group to run\n");
+            return 1;
+        }
+
         int32_t failed_tests = 0;
         int32_t run_tests = 0;
         for (const test_group& group : groups)
         {
-            if (!filter.empty() && group.name != filter)
+            if (group.name != filter)
             {
                 continue;
             }

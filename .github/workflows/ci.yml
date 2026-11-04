@@ -62,4 +62,4 @@ jobs:
       - name: Doxygen
         run: |
           mkdir -p out/docs
-          doxygen Doxyfile
+          XLEAK_VERSION=$(cat VERSION) doxygen Doxyfile
