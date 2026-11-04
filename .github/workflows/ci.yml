@@ -60,4 +60,6 @@ jobs:
       - name: Formatting
         run: git ls-files '*.h' '*.cpp' | xargs clang-format-18 --dry-run --Werror
       - name: Doxygen
-        run: doxygen Doxyfile
+        run: |
+          mkdir -p out/docs
+          doxygen Doxyfile
