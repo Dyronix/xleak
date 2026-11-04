@@ -7,8 +7,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 - The project: a static library with one header, for use with `add_subdirectory` or `find_package`.
-- Linking the library and including `xleak/xleak.h` in one file starts xleak before the program's
-  global objects are constructed, on Windows with MSVC and on Linux with glibc.
+- Linking the `xleak::xleak` CMake target starts xleak before the program's global objects are
+  constructed, on Windows with MSVC and on Linux with glibc. A build that links the library some
+  other way includes `xleak/xleak.h` in one file instead.
 - `xleak::is_active`, and the environment variable `XLEAK=off` to turn it off when a program runs.
 
 xleak watches no allocations yet.
