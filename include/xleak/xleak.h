@@ -17,13 +17,12 @@
 /// Threading: everything in this file is safe to call from any thread.
 
 #if defined(XLEAK_ENABLED)
+static_assert(sizeof(void*) == 8, "xleak supports 64-bit programs only");
+
 // A static library only adds the object files something refers to, and nothing refers to the one
 // that starts xleak before global objects are constructed. This reference is what keeps it.
 extern "C" int xleak_link_anchor;
-#if defined(_MSC_VER) && defined(_M_IX86)
-// 32-bit MSVC decorates C names with a leading underscore
-#pragma comment(linker, "/include:_xleak_link_anchor")
-#elif defined(_MSC_VER)
+#if defined(_MSC_VER)
 #pragma comment(linker, "/include:xleak_link_anchor")
 #else
 [[gnu::used]] static const int* const xleak_link_anchor_reference = &xleak_link_anchor;
