@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.name }} ${{ matrix.config }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [windows-msvc, windows-msvc-x86, linux-gcc, linux-clang]
+        config: [Debug, Release]
+        include:
+          - { name: windows-msvc, runner: windows-2025 }
+          # 32-bit MSVC decorates C names, so the link anchor has another name there
+          - { name: windows-msvc-x86, runner: windows-2025, cmake_args: -A Win32 }
+          - { name: linux-gcc, runner: ubuntu-24.04, cc: gcc-13, cxx: g++-13 }
+          - { name: linux-clang, runner: ubuntu-24.04, cc: clang-18, cxx: clang++-18 }
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+      BUILD_TYPE: ${{ matrix.config }}
+      CMAKE_ARGS: ${{ matrix.cmake_args }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build as the top-level project
+        run: |
+          cmake -S . -B build $CMAKE_ARGS -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DXLEAK_WARNINGS_AS_ERRORS=ON "-DCMAKE_INSTALL_PREFIX=$PWD/installed"
+          cmake --build build --config $BUILD_TYPE
+
+      - name: Tests
+        run: ctest --test-dir build -C $BUILD_TYPE --output-on-failure
+
+      - name: Install, and use it with find_package
+        run: |
+          cmake --install build --config $BUILD_TYPE
+          cmake -S tests/consumers/installed -B build-installed $CMAKE_ARGS -DCMAKE_BUILD_TYPE=$BUILD_TYPE "-DCMAKE_PREFIX_PATH=$PWD/installed"
+          cmake --build build-installed --config $BUILD_TYPE
+          ctest --test-dir build-installed -C $BUILD_TYPE --output-on-failure
+
+      - name: Vendor it with add_subdirectory
+        run: |
+          cmake -S tests/consumers/vendored -B build-vendored $CMAKE_ARGS -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+          cmake --build build-vendored --config $BUILD_TYPE
+          ctest --test-dir build-vendored -C $BUILD_TYPE --output-on-failure
+          ctest --test-dir build-vendored -C $BUILD_TYPE -N | grep -q "Total Tests: 1"
+
+  checks:
+    name: Format and docs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y clang-format-18 doxygen
+      - name: Formatting
+        run: git ls-files '*.h' '*.cpp' | xargs clang-format-18 --dry-run --Werror
+      - name: Doxygen
+        run: |
+          mkdir -p out/docs
+          XLEAK_VERSION=$(cat VERSION) doxygen Doxyfile
